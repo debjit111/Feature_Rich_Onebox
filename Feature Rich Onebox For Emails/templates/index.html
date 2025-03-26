@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Onebox Email Aggregator{% endblock %}
+
+{% block header %}Dashboard{% endblock %}
+{% block subheader %}Overview of your email accounts and activity{% endblock %}
+
+{% block content %}
+<!-- Stats overview -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card mb-4 text-center">
+            <div class="card-body">
+                <i class="fas fa-user-circle fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Email Accounts</h5>
+                <p class="card-text display-4">{{ stats.accounts }}</p>
+                <a href="{{ url_for('manage_accounts') }}" class="btn btn-sm btn-outline-primary">Manage Accounts</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mb-4 text-center">
+            <div class="card-body">
+                <i class="fas fa-envelope fa-3x mb-3 text-info"></i>
+                <h5 class="card-title">Total Emails</h5>
+                <p class="card-text display-4">{{ stats.emails }}</p>
+                <a href="{{ url_for('view_emails') }}" class="btn btn-sm btn-outline-info">View All</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mb-4 text-center">
+            <div class="card-body">
+                <i class="fas fa-smile fa-3x mb-3 text-success"></i>
+                <h5 class="card-title">Interested Leads</h5>
+                <p class="card-text display-4">{{ stats.categories.get('interested', 0) }}</p>
+                <a href="{{ url_for('view_emails', category='interested') }}" class="btn btn-sm btn-outline-success">View Leads</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card mb-4 text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-check fa-3x mb-3 text-warning"></i>
+                <h5 class="card-title">Meetings Booked</h5>
+                <p class="card-text display-4">{{ stats.categories.get('meeting_booked', 0) }}</p>
+                <a href="{{ url_for('view_emails', category='meeting_booked') }}" class="btn btn-sm btn-outline-warning">View Meetings</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email category breakdown -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Email Categories</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Count</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-success">Interested</span></td>
+                                <td>{{ stats.categories.get('interested', 0) }}</td>
+                                <td><a href="{{ url_for('view_emails', category='interested') }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Not Interested</span></td>
+                                <td>{{ stats.categories.get('not_interested', 0) }}</td>
+                                <td><a href="{{ url_for('view_emails', category='not_interested') }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning">Meeting Booked</span></td>
+                                <td>{{ stats.categories.get('meeting_booked', 0) }}</td>
+                                <td><a href="{{ url_for('view_emails', category='meeting_booked') }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-info">Out of Office</span></td>
+                                <td>{{ stats.categories.get('out_of_office', 0) }}</td>
+                                <td><a href="{{ url_for('view_emails', category='out_of_office') }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-secondary">Spam</span></td>
+                                <td>{{ stats.categories.get('spam', 0) }}</td>
+                                <td><a href="{{ url_for('view_emails', category='spam') }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-light text-dark">Uncategorized</span></td>
+                                <td>{{ stats.categories.get('uncategorized', 0) }}</td>
+                                <td><a href="{{ url_for('view_emails', category='uncategorized') }}" class="btn btn-sm btn-outline-secondary">View</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Email Accounts</h5>
+            </div>
+            <div class="card-body">
+                {% if accounts %}
+                <div class="list-group">
+                    {% for account in accounts %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">{{ account.name }}</h6>
+                            <p class="mb-1 text-secondary">{{ account.email }}</p>
+                            <small class="text-muted">Last sync: {% if account.last_sync %}{{ account.last_sync.strftime('%Y-%m-%d %H:%M') }}{% else %}Never{% endif %}</small>
+                        </div>
+                        <div class="d-flex">
+                            <form action="{{ url_for('sync_account', account_id=account.id) }}" method="post" class="me-2">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-sync-alt me-1"></i> Sync
+                                </button>
+                            </form>
+                            <a href="{{ url_for('view_emails', account_id=account.id) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-envelope me-1"></i> Emails
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-secondary">
+                    <p class="mb-0">No email accounts configured. Add an account to get started.</p>
+                    <a href="{{ url_for('manage_accounts') }}" class="btn btn-primary mt-2">Add Account</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick actions and tips -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('manage_accounts') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-plus-circle me-2"></i>Add Email Account
+                    </a>
+                    <form action="{{ url_for('api_sync_all') }}" method="post">
+                        <button type="submit" class="btn btn-outline-info w-100">
+                            <i class="fas fa-sync-alt me-2"></i>Sync All Accounts
+                        </button>
+                    </form>
+                    <a href="{{ url_for('search_emails') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-search me-2"></i>Advanced Search
+                    </a>
+                    <a href="{{ url_for('manage_webhooks') }}" class="btn btn-outline-dark">
+                        <i class="fas fa-plug me-2"></i>Configure Webhooks
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Quick Tips</h5>
+            </div>
+            <div class="card-body">
+                <div id="tipsCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <div class="p-3">
+                                <h5>AI Email Categorization</h5>
+                                <p>Emails are automatically categorized when synced into categories like "Interested", "Not Interested", "Meeting Booked", etc.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div class="p-3">
+                                <h5>Reply Suggestions</h5>
+                                <p>When viewing an email, click "Suggest Reply" to get an AI-generated response based on the email's content.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div class="p-3">
+                                <h5>Configure Webhooks</h5>
+                                <p>Set up webhooks to receive notifications in your apps when new emails arrive or are categorized.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-item">
+                            <div class="p-3">
+                                <h5>Advanced Search</h5>
+                                <p>Use the search feature to find emails by content, sender, or category across all your accounts.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#tipsCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#tipsCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+
+{% block title %}Webhooks - Onebox Email Aggregator{% endblock %}
+
+{% block header %}Webhooks{% endblock %}
+
+{% block header_actions %}
+<div class="btn-toolbar">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addWebhookModal">
+        <i class="fas fa-plus me-1"></i> Add Webhook
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Webhooks listing -->
+<div class="card mb-4">
+    <div class="card-body">
+        {% if webhooks %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>URL</th>
+                        <th>Events</th>
+                        <th>Status</th>
+                        <th>Last Triggered</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for webhook in webhooks %}
+                    <tr>
+                        <td>{{ webhook.name }}</td>
+                        <td><code class="text-truncate d-inline-block" style="max-width: 250px;">{{ webhook.url }}</code></td>
+                        <td>
+                            {% for event in webhook.events.split(',') %}
+                                <span class="badge bg-info me-1">{{ event.strip() }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if webhook.active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if webhook.last_triggered %}
+                                {{ webhook.last_triggered.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <form action="{{ url_for('test_webhook', webhook_id=webhook.id) }}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Test webhook">
+                                        <i class="fas fa-vial"></i>
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Delete webhook" 
+                                        data-bs-toggle="modal" data-bs-target="#deleteModal{{ webhook.id }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Delete confirmation modal -->
+                            <div class="modal fade" id="deleteModal{{ webhook.id }}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Are you sure you want to delete the webhook <strong>{{ webhook.name }}</strong>?</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form action="{{ url_for('delete_webhook', webhook_id=webhook.id) }}" method="post">
+                                                <button type="submit" class="btn btn-danger">Delete Webhook</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-secondary">
+            <p class="mb-0">No webhooks configured yet. Add a webhook to receive notifications for events.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add webhook modal -->
+<div class="modal fade" id="addWebhookModal" tabindex="-1" aria-labelledby="addWebhookModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="{{ url_for('manage_webhooks') }}" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addWebhookModalLabel">Add Webhook</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Webhook Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                        <div class="form-text">A friendly name for this webhook.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="url" class="form-label">Webhook URL</label>
+                        <input type="url" class="form-control" id="url" name="url" required>
+                        <div class="form-text">The URL that will receive webhook events via POST requests.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Events to Subscribe</label>
+                        <div class="form-text mb-2">Select events that will trigger this webhook.</div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input event-checkbox" type="checkbox" value="email.new" id="event_email_new" checked>
+                            <label class="form-check-label" for="event_email_new">
+                                <span class="badge bg-info me-1">email.new</span> New email received
+                            </label>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input event-checkbox" type="checkbox" value="email.categorized" id="event_email_categorized">
+                            <label class="form-check-label" for="event_email_categorized">
+                                <span class="badge bg-info me-1">email.categorized</span> Email categorized by AI
+                            </label>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input event-checkbox" type="checkbox" value="account.synced" id="event_account_synced">
+                            <label class="form-check-label" for="event_account_synced">
+                                <span class="badge bg-info me-1">account.synced</span> Account sync completed
+                            </label>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input event-checkbox" type="checkbox" value="interested.lead" id="event_interested_lead">
+                            <label class="form-check-label" for="event_interested_lead">
+                                <span class="badge bg-info me-1">interested.lead</span> New interested lead detected
+                            </label>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input class="form-check-input event-checkbox" type="checkbox" value="meeting.booked" id="event_meeting_booked">
+                            <label class="form-check-label" for="event_meeting_booked">
+                                <span class="badge bg-info me-1">meeting.booked</span> Meeting booked
+                            </label>
+                        </div>
+                        
+                        <!-- Hidden field to store selected events -->
+                        <input type="hidden" name="events" id="events_input" value="email.new">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Webhook</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Webhook information card -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Webhook Information</h5>
+    </div>
+    <div class="card-body">
+        <p>Webhooks allow you to receive real-time notifications when events occur in your email accounts.</p>
+        
+        <div class="accordion" id="webhookAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                        Event Types
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#webhookAccordion">
+                    <div class="accordion-body">
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-info me-2">email.new</span>
+                                    <strong>New Email Received</strong>
+                                </div>
+                                <span class="text-muted">Triggered when a new email is received and processed</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-info me-2">email.categorized</span>
+                                    <strong>Email Categorized</strong>
+                                </div>
+                                <span class="text-muted">Triggered when an email is categorized by AI</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-info me-2">account.synced</span>
+                                    <strong>Account Synced</strong>
+                                </div>
+                                <span class="text-muted">Triggered when an account completes a sync operation</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-info me-2">interested.lead</span>
+                                    <strong>Interested Lead</strong>
+                                </div>
+                                <span class="text-muted">Triggered when an email is categorized as an "interested" lead</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-info me-2">meeting.booked</span>
+                                    <strong>Meeting Booked</strong>
+                                </div>
+                                <span class="text-muted">Triggered when an email is categorized as "meeting_booked"</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingTwo">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                        Payload Format
+                    </button>
+                </h2>
+                <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#webhookAccordion">
+                    <div class="accordion-body">
+                        <p>Webhooks are sent as HTTP POST requests with a JSON payload. Here's an example payload:</p>
+                        <pre class="bg-dark text-light p-3 rounded"><code>{
+  "event": "email.new",
+  "timestamp": "2025-03-25T14:30:00Z",
+  "data": {
+    "email_id": 123,
+    "account_id": 1,
+    "subject": "Meeting Request",
+    "sender": "john@example.com",
+    "category": "interested"
+  }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingThree">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                        Implementation Tips
+                    </button>
+                </h2>
+                <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#webhookAccordion">
+                    <div class="accordion-body">
+                        <ul>
+                            <li>Your webhook endpoint should respond with a 2xx status code to acknowledge receipt.</li>
+                            <li>Implement retry logic in your webhook handler to ensure reliability.</li>
+                            <li>Webhook requests will timeout after 5 seconds.</li>
+                            <li>For security, consider implementing signature verification for your webhooks.</li>
+                            <li>Use the Test button to send a test event to your webhook endpoint.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update events input when checkboxes change
+        const eventCheckboxes = document.querySelectorAll('.event-checkbox');
+        const eventsInput = document.getElementById('events_input');
+        
+        function updateEventsInput() {
+            const selectedEvents = [];
+            eventCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedEvents.push(checkbox.value);
+                }
+            });
+            eventsInput.value = selectedEvents.join(',');
+        }
+        
+        eventCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateEventsInput);
+        });
+    });
+</script>
+{% endblock %}

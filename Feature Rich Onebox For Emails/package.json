@@ -1,0 +1,22 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "A feature-rich email management system that synchronizes multiple IMAP accounts in real-time, categorizes emails using AI, enables advanced search with Elasticsearch, integrates with Slack/webhooks, and provides AI-powered reply suggestions.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.17.1",
+    "axios": "^1.8.4",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mailparser": "^3.7.2",
+    "node-imap": "^0.9.6",
+    "openai": "^4.89.0",
+    "winston": "^3.17.0"
+  }
+}

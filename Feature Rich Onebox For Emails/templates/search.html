@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Emails - Onebox Email Aggregator{% endblock %}
+
+{% block header %}Search Emails{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-body">
+        <form action="{{ url_for('search_emails') }}" method="get" class="mb-0">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="q" name="q" placeholder="Search emails..." value="{{ request.args.get('q', '') }}">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="category" id="category">
+                        <option value="">All Categories</option>
+                        <option value="interested" {% if request.args.get('category') == 'interested' %}selected{% endif %}>Interested</option>
+                        <option value="not_interested" {% if request.args.get('category') == 'not_interested' %}selected{% endif %}>Not Interested</option>
+                        <option value="meeting_booked" {% if request.args.get('category') == 'meeting_booked' %}selected{% endif %}>Meeting Booked</option>
+                        <option value="out_of_office" {% if request.args.get('category') == 'out_of_office' %}selected{% endif %}>Out of Office</option>
+                        <option value="spam" {% if request.args.get('category') == 'spam' %}selected{% endif %}>Spam</option>
+                        <option value="uncategorized" {% if request.args.get('category') == 'uncategorized' %}selected{% endif %}>Uncategorized</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="account_id" id="account_id">
+                        <option value="">All Accounts</option>
+                        {% for account in accounts %}
+                        <option value="{{ account.id }}" {% if request.args.get('account_id')|int == account.id %}selected{% endif %}>
+                            {{ account.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Search results -->
+{% if request.args.get('q') or request.args.get('category') or request.args.get('account_id') %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Search Results</h5>
+        <span class="badge bg-secondary">{{ emails|length }} results</span>
+    </div>
+    <div class="card-body email-list">
+        {% if emails %}
+        <div class="list-group">
+            {% for email in emails %}
+            <a href="{{ url_for('view_email', email_id=email.id) }}" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">{{ email.subject }}</h5>
+                        <p class="mb-1">
+                            <span class="text-secondary">From:</span> {{ email.sender }}
+                            <span class="ms-2 text-secondary">To:</span> {{ email.recipients|truncate(50) }}
+                        </p>
+                        <p class="mb-1 text-truncate" style="max-width: 500px;">
+                            {{ email.body_text|striptags|truncate(100) if email.body_text else '' }}
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-body-secondary">
+                            {{ email.date.strftime('%b %d, %Y %H:%M') if email.date else '' }}
+                        </small>
+                        <div>
+                            {% if email.category == 'interested' %}
+                                <span class="badge bg-success category-badge">Interested</span>
+                            {% elif email.category == 'not_interested' %}
+                                <span class="badge bg-danger category-badge">Not Interested</span>
+                            {% elif email.category == 'meeting_booked' %}
+                                <span class="badge bg-warning category-badge">Meeting Booked</span>
+                            {% elif email.category == 'out_of_office' %}
+                                <span class="badge bg-info category-badge">Out of Office</span>
+                            {% elif email.category == 'spam' %}
+                                <span class="badge bg-secondary category-badge">Spam</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark category-badge">Uncategorized</span>
+                            {% endif %}
+                            <small class="d-block mt-1">{{ email.folder }}</small>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-secondary text-center">
+            <p><i class="fas fa-search fa-3x mb-3"></i></p>
+            <p class="mb-0">No emails found matching your search criteria.</p>
+            <a href="{{ url_for('search_emails') }}" class="btn btn-outline-primary mt-2">
+                <i class="fas fa-times me-1"></i> Clear Search
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center p-5">
+        <div class="mb-4">
+            <i class="fas fa-search fa-5x text-secondary"></i>
+        </div>
+        <h3>Search Your Emails</h3>
+        <p class="lead">Enter keywords above to search through your emails.</p>
+        <p>You can search by subject, content, sender, or recipient.</p>
+        <p>Combine with category and account filters for more precise results.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Search tips -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Search Tips</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Search Examples</h5>
+                        <ul>
+                            <li>Type <code>meeting</code> to find emails about meetings</li>
+                            <li>Type <code>"quarterly results"</code> to find emails with that exact phrase</li>
+                            <li>Type <code>from:john</code> to find emails from John</li>
+                            <li>Type <code>has:attachment</code> to find emails with attachments</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-3 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Combine Filters</h5>
+                        <p>Use the dropdown menus for more targeted searches:</p>
+                        <ul>
+                            <li>Filter by category to find specific types of emails</li>
+                            <li>Filter by account to search within a specific email account</li>
+                            <li>Combine text search with filters for even more precise results</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-submit form when select fields change
+        document.getElementById('category').addEventListener('change', function() {
+            document.querySelector('form').submit();
+        });
+        
+        document.getElementById('account_id').addEventListener('change', function() {
+            document.querySelector('form').submit();
+        });
+    });
+</script>
+{% endblock %}

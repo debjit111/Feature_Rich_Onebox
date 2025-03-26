@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+
+{% block title %}Email Details - Onebox Email Aggregator{% endblock %}
+
+{% block header %}{{ email.subject }}{% endblock %}
+{% block subheader %}{{ email.date.strftime('%B %d, %Y %H:%M') if email.date else email.received_date.strftime('%B %d, %Y %H:%M') }}{% endblock %}
+
+{% block header_actions %}
+<div class="btn-toolbar">
+    <button type="button" class="btn btn-outline-primary me-2" id="suggestReplyBtn">
+        <i class="fas fa-robot me-1"></i> Suggest Reply
+    </button>
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="fas fa-tag me-1"></i> Categorize
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <form action="{{ url_for('api_categorize_email', email_id=email.id) }}" method="post" class="d-inline">
+                    <a href="#" class="dropdown-item category-btn" data-category="interested">
+                        <span class="badge bg-success me-2">Interested</span> Lead showing interest
+                    </a>
+                </form>
+            </li>
+            <li>
+                <form action="{{ url_for('api_categorize_email', email_id=email.id) }}" method="post" class="d-inline">
+                    <a href="#" class="dropdown-item category-btn" data-category="not_interested">
+                        <span class="badge bg-danger me-2">Not Interested</span> Declining or rejecting
+                    </a>
+                </form>
+            </li>
+            <li>
+                <form action="{{ url_for('api_categorize_email', email_id=email.id) }}" method="post" class="d-inline">
+                    <a href="#" class="dropdown-item category-btn" data-category="meeting_booked">
+                        <span class="badge bg-warning me-2">Meeting Booked</span> Confirming a meeting
+                    </a>
+                </form>
+            </li>
+            <li>
+                <form action="{{ url_for('api_categorize_email', email_id=email.id) }}" method="post" class="d-inline">
+                    <a href="#" class="dropdown-item category-btn" data-category="out_of_office">
+                        <span class="badge bg-info me-2">Out of Office</span> Auto-reply
+                    </a>
+                </form>
+            </li>
+            <li>
+                <form action="{{ url_for('api_categorize_email', email_id=email.id) }}" method="post" class="d-inline">
+                    <a href="#" class="dropdown-item category-btn" data-category="spam">
+                        <span class="badge bg-secondary me-2">Spam</span> Unwanted message
+                    </a>
+                </form>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form action="{{ url_for('api_categorize_email', email_id=email.id) }}" method="post" class="d-inline">
+                    <a href="#" class="dropdown-item category-btn" data-category="uncategorized">
+                        <span class="badge bg-light text-dark me-2">Uncategorized</span> Remove category
+                    </a>
+                </form>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Email metadata -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Email Details</h5>
+        <div>
+            {% if email.category == 'interested' %}
+                <span class="badge bg-success">Interested</span>
+            {% elif email.category == 'not_interested' %}
+                <span class="badge bg-danger">Not Interested</span>
+            {% elif email.category == 'meeting_booked' %}
+                <span class="badge bg-warning">Meeting Booked</span>
+            {% elif email.category == 'out_of_office' %}
+                <span class="badge bg-info">Out of Office</span>
+            {% elif email.category == 'spam' %}
+                <span class="badge bg-secondary">Spam</span>
+            {% else %}
+                <span class="badge bg-light text-dark">Uncategorized</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-2 text-secondary">From:</div>
+            <div class="col-md-10">{{ email.sender }}</div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-2 text-secondary">To:</div>
+            <div class="col-md-10">{{ email.recipients }}</div>
+        </div>
+        {% if email.cc %}
+        <div class="row mb-3">
+            <div class="col-md-2 text-secondary">CC:</div>
+            <div class="col-md-10">{{ email.cc }}</div>
+        </div>
+        {% endif %}
+        <div class="row mb-3">
+            <div class="col-md-2 text-secondary">Date:</div>
+            <div class="col-md-10">{{ email.date.strftime('%B %d, %Y %H:%M') if email.date else 'Unknown' }}</div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-2 text-secondary">Subject:</div>
+            <div class="col-md-10">{{ email.subject }}</div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-2 text-secondary">Account:</div>
+            <div class="col-md-10">
+                <span class="badge bg-primary">{{ email.account.name }}</span>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-2 text-secondary">Folder:</div>
+            <div class="col-md-10">{{ email.folder }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Email content -->
+<div class="card mb-4">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="emailContentTabs">
+            <li class="nav-item">
+                <a class="nav-link active" id="html-tab" data-bs-toggle="tab" href="#html-content">HTML</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="text-tab" data-bs-toggle="tab" href="#text-content">Plain Text</a>
+            </li>
+            {% if email.attachments %}
+            <li class="nav-item">
+                <a class="nav-link" id="attachments-tab" data-bs-toggle="tab" href="#attachments-content">
+                    Attachments <span class="badge bg-secondary">{{ email.attachments|length }}</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="html-content">
+                {% if email.body_html %}
+                <div class="bg-dark p-3 rounded email-html-content">
+                    <iframe id="emailFrame" style="width: 100%; border: none;"></iframe>
+                </div>
+                {% else %}
+                <div class="alert alert-secondary">
+                    <p class="mb-0">No HTML content available for this email.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="tab-pane fade" id="text-content">
+                {% if email.body_text %}
+                <div class="bg-dark p-3 rounded">
+                    <pre class="text-light mb-0" style="white-space: pre-wrap;">{{ email.body_text }}</pre>
+                </div>
+                {% else %}
+                <div class="alert alert-secondary">
+                    <p class="mb-0">No plain text content available for this email.</p>
+                </div>
+                {% endif %}
+            </div>
+            {% if email.attachments %}
+            <div class="tab-pane fade" id="attachments-content">
+                <div class="list-group">
+                    {% for attachment in email.attachments %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-paperclip me-2"></i>
+                            <span>{{ attachment.filename }}</span>
+                            <small class="text-muted ms-2">{{ attachment.content_type }}</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-secondary">{{ (attachment.size / 1024)|round(1) }} KB</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- AI suggested reply modal -->
+<div class="modal fade" id="suggestReplyModal" tabindex="-1" aria-labelledby="suggestReplyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="suggestReplyModalLabel">AI Suggested Reply</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="replyLoading" class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Generating AI reply suggestion...</p>
+                </div>
+                <div id="replyContent" class="d-none">
+                    <div class="mb-3">
+                        <label for="replyText" class="form-label">Suggested Reply:</label>
+                        <textarea class="form-control" id="replyText" rows="10" readonly></textarea>
+                    </div>
+                </div>
+                <div id="replyError" class="d-none">
+                    <div class="alert alert-danger">
+                        <p class="mb-0" id="errorMessage"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="copyReplyBtn">
+                    <i class="fas fa-copy me-1"></i> Copy to Clipboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize iframe content if HTML body exists
+        {% if email.body_html %}
+            const iframe = document.getElementById('emailFrame');
+            iframe.onload = function() {
+                // Set iframe height based on content
+                iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
+            };
+            
+            // Write the HTML content to the iframe
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <base target="_blank">
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            color: #e9ecef;
+                            background-color: #212529;
+                            margin: 0;
+                            padding: 0;
+                        }
+                        a {
+                            color: #0d6efd;
+                        }
+                        img {
+                            max-width: 100%;
+                        }
+                    </style>
+                </head>
+                <body>
+                    {{ email.body_html|safe }}
+                </body>
+                </html>
+            `);
+            iframeDoc.close();
+        {% endif %}
+        
+        // AI suggested reply functionality
+        const suggestReplyBtn = document.getElementById('suggestReplyBtn');
+        const replyLoading = document.getElementById('replyLoading');
+        const replyContent = document.getElementById('replyContent');
+        const replyError = document.getElementById('replyError');
+        const replyText = document.getElementById('replyText');
+        const errorMessage = document.getElementById('errorMessage');
+        const copyReplyBtn = document.getElementById('copyReplyBtn');
+        
+        suggestReplyBtn.addEventListener('click', function() {
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('suggestReplyModal'));
+            modal.show();
+            
+            // Reset modal state
+            replyLoading.classList.remove('d-none');
+            replyContent.classList.add('d-none');
+            replyError.classList.add('d-none');
+            
+            // Fetch reply suggestion from API
+            fetch(`{{ url_for('suggest_reply', email_id=email.id) }}`)
+                .then(response => response.json())
+                .then(data => {
+                    replyLoading.classList.add('d-none');
+                    
+                    if (data.error) {
+                        // Show error message
+                        errorMessage.textContent = data.error;
+                        replyError.classList.remove('d-none');
+                    } else {
+                        // Show reply content
+                        replyText.value = data.reply;
+                        replyContent.classList.remove('d-none');
+                    }
+                })
+                .catch(error => {
+                    replyLoading.classList.add('d-none');
+                    errorMessage.textContent = "An error occurred while generating the reply.";
+                    replyError.classList.remove('d-none');
+                    console.error('Error:', error);
+                });
+        });
+        
+        // Copy to clipboard functionality
+        copyReplyBtn.addEventListener('click', function() {
+            replyText.select();
+            document.execCommand('copy');
+            
+            // Change button text temporarily
+            const originalText = copyReplyBtn.innerHTML;
+            copyReplyBtn.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
+            setTimeout(() => {
+                copyReplyBtn.innerHTML = originalText;
+            }, 2000);
+        });
+        
+        // Email categorization
+        const categoryBtns = document.querySelectorAll('.category-btn');
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', function(event) {
+                event.preventDefault();
+                
+                const category = this.dataset.category;
+                const form = this.closest('form');
+                
+                // Send AJAX request to categorize the email
+                fetch(`{{ url_for('api_categorize_email', email_id=email.id) }}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ category: category }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Reload the page to show the updated category
+                        window.location.reload();
+                    } else {
+                        alert('Error categorizing email: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while categorizing the email.');
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

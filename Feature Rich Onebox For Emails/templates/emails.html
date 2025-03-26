@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Emails - Onebox Email Aggregator{% endblock %}
+
+{% block header %}Emails{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form action="{{ url_for('view_emails') }}" method="get" class="mb-0">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-4">
+                    <select class="form-select" name="category" id="category">
+                        <option value="">All Categories</option>
+                        <option value="interested" {% if request.args.get('category') == 'interested' %}selected{% endif %}>Interested</option>
+                        <option value="not_interested" {% if request.args.get('category') == 'not_interested' %}selected{% endif %}>Not Interested</option>
+                        <option value="meeting_booked" {% if request.args.get('category') == 'meeting_booked' %}selected{% endif %}>Meeting Booked</option>
+                        <option value="out_of_office" {% if request.args.get('category') == 'out_of_office' %}selected{% endif %}>Out of Office</option>
+                        <option value="spam" {% if request.args.get('category') == 'spam' %}selected{% endif %}>Spam</option>
+                        <option value="uncategorized" {% if request.args.get('category') == 'uncategorized' %}selected{% endif %}>Uncategorized</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" name="account_id" id="account_id">
+                        <option value="">All Accounts</option>
+                        {% for account in accounts %}
+                        <option value="{{ account.id }}" {% if request.args.get('account_id')|int == account.id %}selected{% endif %}>
+                            {{ account.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('search_emails') }}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-search me-1"></i> Advanced Search
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Email list -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            {% if request.args.get('category') %}
+                {% if request.args.get('category') == 'interested' %}
+                    <span class="badge bg-success me-2">Interested</span>
+                {% elif request.args.get('category') == 'not_interested' %}
+                    <span class="badge bg-danger me-2">Not Interested</span>
+                {% elif request.args.get('category') == 'meeting_booked' %}
+                    <span class="badge bg-warning me-2">Meeting Booked</span>
+                {% elif request.args.get('category') == 'out_of_office' %}
+                    <span class="badge bg-info me-2">Out of Office</span>
+                {% elif request.args.get('category') == 'spam' %}
+                    <span class="badge bg-secondary me-2">Spam</span>
+                {% elif request.args.get('category') == 'uncategorized' %}
+                    <span class="badge bg-light text-dark me-2">Uncategorized</span>
+                {% endif %}
+            {% endif %}
+            
+            {% if request.args.get('account_id') %}
+                {% for account in accounts %}
+                    {% if account.id|string == request.args.get('account_id') %}
+                        <span class="badge bg-primary me-2">{{ account.name }}</span>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            
+            {% if not request.args.get('category') and not request.args.get('account_id') %}
+                All Emails
+            {% endif %}
+        </h5>
+        <span class="badge bg-secondary">{{ emails|length }} results</span>
+    </div>
+    <div class="card-body email-list">
+        {% if emails %}
+        <div class="list-group">
+            {% for email in emails %}
+            <a href="{{ url_for('view_email', email_id=email.id) }}" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">{{ email.subject }}</h5>
+                        <p class="mb-1">
+                            <span class="text-secondary">From:</span> {{ email.sender }}
+                            <span class="ms-2 text-secondary">To:</span> {{ email.recipients|truncate(50) }}
+                        </p>
+                        <p class="mb-1 text-truncate" style="max-width: 500px;">
+                            {{ email.body_text|striptags|truncate(100) if email.body_text else '' }}
+                        </p>
+                        <small class="text-secondary">
+                            <span class="me-2">{{ email.folder }}</span>
+                            {% for account in accounts %}
+                                {% if account.id == email.account_id %}
+                                    <span class="badge bg-primary">{{ account.name }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-body-secondary">
+                            {{ email.date.strftime('%b %d, %Y %H:%M') if email.date else '' }}
+                        </small>
+                        <div>
+                            {% if email.category == 'interested' %}
+                                <span class="badge bg-success category-badge">Interested</span>
+                            {% elif email.category == 'not_interested' %}
+                                <span class="badge bg-danger category-badge">Not Interested</span>
+                            {% elif email.category == 'meeting_booked' %}
+                                <span class="badge bg-warning category-badge">Meeting Booked</span>
+                            {% elif email.category == 'out_of_office' %}
+                                <span class="badge bg-info category-badge">Out of Office</span>
+                            {% elif email.category == 'spam' %}
+                                <span class="badge bg-secondary category-badge">Spam</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark category-badge">Uncategorized</span>
+                            {% endif %}
+                            
+                            {% if email.attachments|length > 0 %}
+                                <span class="badge bg-dark ms-1" title="{{ email.attachments|length }} attachment(s)">
+                                    <i class="fas fa-paperclip"></i>
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-secondary text-center">
+            <p><i class="fas fa-envelope-open fa-3x mb-3"></i></p>
+            <p class="mb-0">No emails found matching your criteria.</p>
+            <a href="{{ url_for('view_emails') }}" class="btn btn-outline-primary mt-2">
+                <i class="fas fa-times me-1"></i> Clear Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-submit form when select fields change
+        document.getElementById('category').addEventListener('change', function() {
+            document.querySelector('form').submit();
+        });
+        
+        document.getElementById('account_id').addEventListener('change', function() {
+            document.querySelector('form').submit();
+        });
+    });
+</script>
+{% endblock %}

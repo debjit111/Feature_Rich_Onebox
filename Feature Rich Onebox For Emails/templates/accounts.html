@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+
+{% block title %}Email Accounts - Onebox Email Aggregator{% endblock %}
+
+{% block header %}Email Accounts{% endblock %}
+
+{% block header_actions %}
+<div class="btn-toolbar">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+        <i class="fas fa-plus me-1"></i> Add Account
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Accounts table -->
+<div class="card mb-4">
+    <div class="card-body">
+        {% if accounts %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Host</th>
+                        <th>Status</th>
+                        <th>Last Sync</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in accounts %}
+                    <tr>
+                        <td>{{ account.name }}</td>
+                        <td>{{ account.email }}</td>
+                        <td>{{ account.host }}:{{ account.port }}</td>
+                        <td>
+                            {% if account.active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if account.last_sync %}
+                                {{ account.last_sync.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                <span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <form action="{{ url_for('sync_account', account_id=account.id) }}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Sync account">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </form>
+                                <a href="{{ url_for('view_emails', account_id=account.id) }}" class="btn btn-sm btn-outline-secondary" title="View emails">
+                                    <i class="fas fa-envelope"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Delete account" 
+                                        data-bs-toggle="modal" data-bs-target="#deleteModal{{ account.id }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Delete confirmation modal -->
+                            <div class="modal fade" id="deleteModal{{ account.id }}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Are you sure you want to delete the account <strong>{{ account.name }}</strong> ({{ account.email }})?</p>
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                This will also delete all emails associated with this account.
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form action="{{ url_for('delete_account', account_id=account.id) }}" method="post">
+                                                <button type="submit" class="btn btn-danger">Delete Account</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-secondary">
+            <p class="mb-0">No email accounts configured yet. Add your first account to start syncing emails.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add account modal -->
+<div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="{{ url_for('manage_accounts') }}" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addAccountModalLabel">Add Email Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Account Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <div class="form-text">A friendly name for this account.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                        <div class="form-text">
+                            For Gmail, you'll need an <a href="https://support.google.com/accounts/answer/185833" target="_blank">App Password</a>.
+                            For other providers, check their documentation on IMAP access.
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="host" class="form-label">IMAP Server</label>
+                            <input type="text" class="form-control" id="host" name="host" required>
+                            <div class="form-text">e.g., imap.gmail.com, outlook.office365.com</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="port" class="form-label">Port</label>
+                            <input type="number" class="form-control" id="port" name="port" value="993" required>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch pt-4 mt-2">
+                                <input class="form-check-input" type="checkbox" id="use_tls" name="use_tls" value="1" checked>
+                                <label class="form-check-label" for="use_tls">Use TLS</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Common email providers -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">Common Email Providers</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-secondary email-provider" 
+                                        data-host="imap.gmail.com" data-port="993" data-tls="true">
+                                    <i class="fas fa-envelope me-1"></i> Gmail
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary email-provider" 
+                                        data-host="outlook.office365.com" data-port="993" data-tls="true">
+                                    <i class="fas fa-envelope me-1"></i> Outlook
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary email-provider" 
+                                        data-host="imap.mail.yahoo.com" data-port="993" data-tls="true">
+                                    <i class="fas fa-envelope me-1"></i> Yahoo
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary email-provider" 
+                                        data-host="imap.aol.com" data-port="993" data-tls="true">
+                                    <i class="fas fa-envelope me-1"></i> AOL
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary email-provider" 
+                                        data-host="imap.zoho.com" data-port="993" data-tls="true">
+                                    <i class="fas fa-envelope me-1"></i> Zoho
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary email-provider" 
+                                        data-host="imap.ionos.com" data-port="993" data-tls="true">
+                                    <i class="fas fa-envelope me-1"></i> IONOS
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Account information card -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Account Information</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">About Email Accounts</h5>
+                        <p>Email accounts are used to sync emails from your IMAP servers. Each account is synced independently and emails are categorized automatically using AI.</p>
+                        <p>The system will retrieve emails from the past 30 days when you first add an account, and will keep monitoring for new emails.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-3 h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Security Information</h5>
+                        <p>Your email credentials are stored securely and are only used to sync emails via IMAP. We recommend using app-specific passwords where available.</p>
+                        <p>All connections are made using secure TLS connections to ensure your data remains protected.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle email provider button clicks
+        const providerButtons = document.querySelectorAll('.email-provider');
+        providerButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                document.getElementById('host').value = this.dataset.host;
+                document.getElementById('port').value = this.dataset.port;
+                document.getElementById('use_tls').checked = this.dataset.tls === 'true';
+            });
+        });
+        
+        // Auto-fill name from email
+        const emailInput = document.getElementById('email');
+        const nameInput = document.getElementById('name');
+        
+        emailInput.addEventListener('blur', function() {
+            if (nameInput.value === '' && emailInput.value !== '') {
+                // Use the part before @ as the account name
+                const emailName = emailInput.value.split('@')[0];
+                nameInput.value = emailName.charAt(0).toUpperCase() + emailName.slice(1) + ' Account';
+            }
+        });
+    });
+</script>
+{% endblock %}
